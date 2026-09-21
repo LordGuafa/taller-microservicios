@@ -1,4 +1,6 @@
-require("dotenv").config();
+import "dotenv/config";
+import connectDB from "./config/database";
+
 const express = require("express");
 const clientesRoutes = require("./routes/clientes.routes");
 
@@ -12,6 +14,16 @@ app.get("/", (req: any, res: any) => {
   res.status(200).json({ mensaje: "cliente-api activa" });
 });
 
-app.listen(PORT, () => {
-  console.log(`cliente-api escuchando en el puerto ${PORT}`);
-});
+async function startServer() {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`cliente-api escuchando en el puerto ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Error starting the server:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
