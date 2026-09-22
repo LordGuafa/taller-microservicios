@@ -70,5 +70,64 @@ router.post("/", async (req, res) => {
     res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 });
+router.put("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { nombre, email } = req.body ?? {};
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ mensaje: "Cliente no encontrado" });
+    }
+
+    if (!nombre || !email) {
+      return res
+        .status(400)
+        .json({ mensaje: "Los campos 'nombre' y 'email' son obligatorios" });
+    }
+
+    const resultado = await pool.query<Cliente>(
+      "UPDATE clientes SET nombre = $1, email = $2, updated_at = NOW() WHERE id = $3 RETURNING id, nombre, email, created_at, updated_at",
+      [nombre, email, id]
+    );
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ mensaje: "Cliente no encontrado" });
+    }
+
+    res.status(200).json(resultado.rows[0]);
+  } catch (error: any) {
+    // Código 23505 = unique_violation (email duplicado en PostgreSQL)
+    if (error?.code === "23505") {
+      return res.status(409).json({ mensaje: "El email ya está registrado" });
+    }
+    console.error("Error actualizando cliente:", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+});
+
+// DELETE /clientes/:id - eliminar
+router.delete("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ mensaje: "Cliente no encontrado" });
+    }
+
+    const resultado = await pool.query(
+      "DELETE FROM clientes WHERE id = $1",
+      [id]
+    );
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ mensaje: "Cliente no encontrado" });
+    }
+
+    res.status(200).json({ mensaje: "Cliente eliminado correctamente" });
+  } catch (error) {
+    console.error("Error eliminando cliente:", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+});
 
 module.exports = router;
