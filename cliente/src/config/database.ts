@@ -1,15 +1,15 @@
-import mongoose from "mongoose";
+import { Pool } from "pg";
 
-async function connectDB(): Promise<void> {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error("MONGODB_URI no está definida en el .env");
-  }
+export const pool = new Pool({
+  host: process.env.DB_HOST || "localhost",
+  port: Number(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME || "cliente_db",
+  user: process.env.DB_USER || "cliente_user",
+  password: process.env.DB_PASSWORD || "",
+  max: 10,
+});
 
-  await mongoose.connect(uri, {
-    dbName: process.env.DB_NAME || "clientes",
-  });
-  console.log(`MongoDB conectado: ${mongoose.connection.name}`);
+export async function verificarConexion(): Promise<void> {
+  await pool.query("SELECT 1");
+  console.log("PostgreSQL conectado");
 }
-
-export default connectDB;

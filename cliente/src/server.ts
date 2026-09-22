@@ -1,5 +1,5 @@
 import "dotenv/config";
-import connectDB from "./config/database";
+import { pool } from "./config/database";
 
 const express = require("express");
 const clientesRoutes = require("./routes/clientes.routes");
@@ -16,7 +16,9 @@ app.get("/", (req: any, res: any) => {
 
 async function startServer() {
   try {
-    await connectDB();
+    await pool.query("SELECT 1");
+    console.log("PostgreSQL conectado");
+
     app.listen(PORT, () => {
       console.log(`cliente-api escuchando en el puerto ${PORT}`);
     });
