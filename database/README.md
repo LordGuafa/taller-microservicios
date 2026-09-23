@@ -74,7 +74,7 @@ psql -U postgres \
 | Base de datos   | Servicio en el repo | Estado actual                                  |
 |-----------------|---------------------|-------------------------------------------------|
 | `cliente_db`    | `cliente/`          | **Migrado**: el servicio usa esta base con `pg` (sin ORM). |
-| `producto_db`   | `producto/`         | Infraestructura lista, pero el servicio aún guarda productos **en memoria**. |
+| `producto_db`   | `producto/`         | **Migrado**: el servicio usa esta base con `pg` y consultas parametrizadas. |
 | `compra_db`     | `compra-api/`       | Infraestructura lista, pero el servicio aún guarda compras **en memoria**. |
 
 Los scripts 03, 04 y 05 se crean/sembran igualmente para dejar toda la infraestructura preparada. Ver el [README principal](../README.md) y la sección *Roadmap / Pendientes*.

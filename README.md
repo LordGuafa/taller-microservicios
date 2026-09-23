@@ -35,7 +35,7 @@ flowchart LR
 
     subgraph producto["producto-api :3002"]
         P[Node + Express 5 + JavaScript]
-        PD((En memoria<br/>productos.js))
+      PD[(PostgreSQL<br/>producto_db)]
         P --> PD
     end
 
@@ -50,7 +50,7 @@ flowchart LR
 ```
 
 - **cliente-api** expone el CRUD de clientes y persiste en PostgreSQL (`cliente_db`) usando el driver `pg` con SQL crudo sin ORM.
-- **producto-api** expone el catálogo de productos, actualmente en memoria.
+- **producto-api** expone el catálogo de productos y persiste en PostgreSQL (`producto_db`).
 - **compra-api** registra compras: antes de crear una, valida vía HTTP que el cliente y el producto existan y que haya stock suficiente.
 
 ## Servicios
@@ -58,14 +58,14 @@ flowchart LR
 | Servicio | Lenguaje | Framework | Persistencia | Puerto | Estado de la persistencia |
 |----------|----------|-----------|--------------|--------|---------------------------|
 | `cliente/` | TypeScript | Express 5 | PostgreSQL (`cliente_db`) | 3001 | **Persistente** (driver `pg`, sin ORM) |
-| `producto/` | JavaScript (CommonJS) | Express 5 | In-memory (`src/data/productos.js`) | 3002 | En memoria |
+| `producto/` | JavaScript (CommonJS) | Express 5 | PostgreSQL (`producto_db`) | 3002 | **Persistente** (driver `pg`, sin ORM) |
 | `compra-api/` | JavaScript (CommonJS) | Express 4 | In-memory (`src/data/compras.js`) | 3003 | En memoria |
 
 ## Requisitos previos
 
 - **Node.js 18+**. No hay campo `engines` declarado en los `package.json`, pero Express 5 y `tsx` requieren Node 18 o superior, y `pg` requiere Node 16+. Usar una versión 18+ es lo seguro.
 - **pnpm** para instalar dependencias (se usa `pnpm-lock.yaml` en `cliente/` y `compra-api/`; `producto/` también incluye un `package-lock.json`, por lo que funciona con `npm` si se prefiere).
-- **PostgreSQL** en ejecución (obligatorio solo para `cliente`).
+- **PostgreSQL** en ejecución (obligatorio para `cliente` y `producto`).
 
 ## Instalación y ejecución
 
@@ -87,6 +87,7 @@ Scripts disponibles (`cliente/package.json`): `build` (`tsc`), `typecheck` (`tsc
 ```bash
 cd producto
 pnpm install
+cp .env.example .env  # ajustar credenciales de PostgreSQL si hace falta
 pnpm dev               # nodemon
 ```
 
@@ -128,7 +129,7 @@ psql -U postgres -f 04-tablas-compra.sql
 psql -U postgres -f 05-datos-prueba.sql
 ```
 
-Los scripts 03 y 04 crean también las bases `producto_db` y `compra_db`, que hoy no consume ningún servicio (ver [Sobre la persistencia](#sobre-la-persistencia)) pero quedan preparadas para una futura migración.
+Los scripts 03 y 04 crean las bases `producto_db` y `compra_db`; `producto-api` ya consume `producto_db`, mientras `compra_db` queda preparada para una futura migración.
 
 ## Variables de entorno
 
@@ -145,7 +146,14 @@ Los scripts 03 y 04 crean también las bases `producto_db` y `compra_db`, que ho
 
 ### producto (`producto/.env.example`)
 
-El archivo solo contiene `PORT=` sin valor (incompleto). El servicio no lee ninguna variable de entorno: el puerto por defecto es `3002`.
+| Variable       | Valor por defecto      | Descripción                      |
+|----------------|------------------------|----------------------------------|
+| `PORT`         | `3002`                 | Puerto del servicio              |
+| `DB_HOST`      | `localhost`            | Host de PostgreSQL               |
+| `DB_PORT`      | `5432`                 | Puerto de PostgreSQL             |
+| `DB_NAME`      | `producto_db`          | Base de datos de productos       |
+| `DB_USER`      | `producto_user`        | Usuario de BD con privilegios mínimos |
+| `DB_PASSWORD`  | `producto_pass_123`    | Contraseña del usuario de BD     |
 
 ### compra-api (`compra-api/.env.example`)
 
@@ -211,13 +219,13 @@ curl http://localhost:3003/compras
 
 - **`cliente/` es el único microservicio migrado a PostgreSQL** y lo hace **sin ORM**: usa el driver `pg` con consultas SQL crudas y parametrizadas (`$1`, `$2`) definidas directamente en `src/routes/clientes.routes.ts`.
 - La **ausencia de ORM es intencional** como requisito del taller: el objetivo es evidenciar los riesgos y costos del SQL hardcodeado en un proyecto real (mantenibilidad, falta de migraciones automáticas, posibilidad de inyección SQL si se eliminan los parámetros, acoplamiento al esquema concreto de la base). **No es una recomendación de buena práctica** para producción.
-- **`producto/` y `compra-api/` todavía no tienen persistencia real:** mantienen sus datos en arreglos dentro de `src/data/` que se reinician al reiniciar el proceso. Aunque `producto/` declara `pg` en sus dependencias, no lo utiliza.
+- **`compra-api/` todavía no tiene persistencia real:** mantiene sus compras en un arreglo dentro de `src/data/` que se reinicia al reiniciar el proceso.
 
 ## Roadmap / Pendientes
 
-- [ ] Migrar `producto/` de datos en memoria a una base de datos persistente (la infraestructura `producto_db` ya existe en `database/`).
+- [x] Migrar `producto/` de datos en memoria a una base de datos persistente.
 - [ ] Migrar `compra-api/` a persistencia (`compra_db` ya está contemplada en `database/`, con la tabla de rompimiento `compra_detalle`).
-- [ ] Completar `producto/.env.example` (solo contiene `PORT=`).
+- [x] Completar `producto/.env.example`.
 - [ ] Declarar el campo `engines` en los `package.json` para fijar la versión mínima de Node.
 
 ---

@@ -1,6 +1,6 @@
 # producto-api
 
-Servicio de catálogo de productos en el taller de microservicios. Expone consulta y creación de productos con datos **en memoria** (aún no tiene persistencia real).
+Servicio de catálogo de productos en el taller de microservicios. Expone consulta y creación de productos con persistencia en PostgreSQL.
 
 **Stack:** JavaScript (CommonJS) · Express 5 · Puerto `3002`
 
@@ -18,17 +18,18 @@ Los datos de ejemplo son un teclado mecánico y un mouse inalámbrico. El id del
 
 - Node.js 18+ (Express 5 lo requiere; no hay `engines` declarado en `package.json`).
 - pnpm (o `npm`, también hay `package-lock.json`).
-- **No necesita PostgreSQL**: los datos viven en `src/data/productos.js`.
+- PostgreSQL en ejecución con la base `producto_db` configurada mediante los scripts de [`database/`](../database/README.md).
 
 ## Variables de entorno
 
-[`producto/.env.example`](../producto/.env.example) solo contiene `PORT=` sin valor. El servicio no lee ninguna variable de entorno; el puerto por defecto es `3002`.
+[`producto/.env.example`](../producto/.env.example) contiene el puerto y las credenciales de conexión a `producto_db`. Cópialo como `.env` y ajusta los valores si es necesario.
 
 ## Ejecutar en local
 
 ```bash
 cd producto
 pnpm install
+cp .env.example .env
 pnpm dev
 ```
 
@@ -61,5 +62,5 @@ curl -X POST http://localhost:3002/productos \
 
 ## Notas
 
-- **Sin persistencia:** los productos se guardan en un arreglo (`src/data/productos.js`) que se pierde al reiniciar el proceso. Este servicio está **pendiente de migrar a una base de datos persistente** (la infraestructura `producto_db` ya existe en [`database/`](../database/README.md)).
-- `pg` figura en las dependencias de `package.json` pero **no se usa** actualmente; queda listo para la migración.
+- Los productos se almacenan en la tabla `productos` de `producto_db` mediante el driver `pg` y consultas SQL parametrizadas.
+- El servidor verifica la conexión a PostgreSQL antes de comenzar a escuchar en el puerto HTTP.
