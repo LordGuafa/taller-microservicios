@@ -75,6 +75,6 @@ psql -U postgres \
 |-----------------|---------------------|-------------------------------------------------|
 | `cliente_db`    | `cliente/`          | **Migrado**: el servicio usa esta base con `pg` (sin ORM). |
 | `producto_db`   | `producto/`         | **Migrado**: el servicio usa esta base con `pg` y consultas parametrizadas. |
-| `compra_db`     | `compra-api/`       | Infraestructura lista, pero el servicio aún guarda compras **en memoria**. |
+| `compra_db`     | `compra-api/`       | **Migrado**: el servicio usa esta base con `pg`, transacciones y tablas `compras` y `compra_detalle`. |
 
 Los scripts 03, 04 y 05 se crean/sembran igualmente para dejar toda la infraestructura preparada. Ver el [README principal](../README.md) y la sección *Roadmap / Pendientes*.

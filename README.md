@@ -41,7 +41,7 @@ flowchart LR
 
     subgraph compra["compra-api :3003"]
         CO[Node + Express 4 + JavaScript]
-        CD((En memoria<br/>compras.js))
+        CD[(PostgreSQL<br/>compra_db)]
         CO --> CD
     end
 
@@ -59,13 +59,13 @@ flowchart LR
 |----------|----------|-----------|--------------|--------|---------------------------|
 | `cliente/` | TypeScript | Express 5 | PostgreSQL (`cliente_db`) | 3001 | **Persistente** (driver `pg`, sin ORM) |
 | `producto/` | JavaScript (CommonJS) | Express 5 | PostgreSQL (`producto_db`) | 3002 | **Persistente** (driver `pg`, sin ORM) |
-| `compra-api/` | JavaScript (CommonJS) | Express 4 | In-memory (`src/data/compras.js`) | 3003 | En memoria |
+| `compra-api/` | JavaScript (CommonJS) | Express 4 | PostgreSQL (`compra_db`) | 3003 | **Persistente** (driver `pg`, sin ORM) |
 
 ## Requisitos previos
 
 - **Node.js 18+**. No hay campo `engines` declarado en los `package.json`, pero Express 5 y `tsx` requieren Node 18 o superior, y `pg` requiere Node 16+. Usar una versión 18+ es lo seguro.
 - **pnpm** para instalar dependencias (se usa `pnpm-lock.yaml` en `cliente/` y `compra-api/`; `producto/` también incluye un `package-lock.json`, por lo que funciona con `npm` si se prefiere).
-- **PostgreSQL** en ejecución (obligatorio para `cliente` y `producto`).
+- **PostgreSQL** en ejecución (obligatorio para `cliente`, `producto` y `compra-api`).
 
 ## Instalación y ejecución
 
@@ -162,6 +162,11 @@ Los scripts 03 y 04 crean las bases `producto_db` y `compra_db`; `producto-api` 
 | `PORT`                | `3003`                 | Puerto del servicio             |
 | `CLIENTE_API_URL`     | `http://localhost:3001`| URL base de cliente-api         |
 | `PRODUCTO_API_URL`    | `http://localhost:3002`| URL base de producto-api        |
+| `DB_HOST`             | `localhost`            | Host de PostgreSQL              |
+| `DB_PORT`             | `5432`                 | Puerto de PostgreSQL            |
+| `DB_NAME`             | `compra_db`            | Base de datos de compras        |
+| `DB_USER`             | `compra_user`          | Usuario de BD con privilegios mínimos |
+| `DB_PASSWORD`         | `compra_pass_123`      | Contraseña del usuario de BD    |
 
 ## Endpoints por servicio
 
@@ -217,14 +222,14 @@ curl http://localhost:3003/compras
 
 ## Sobre la persistencia
 
-- **`cliente/` es el único microservicio migrado a PostgreSQL** y lo hace **sin ORM**: usa el driver `pg` con consultas SQL crudas y parametrizadas (`$1`, `$2`) definidas directamente en `src/routes/clientes.routes.ts`.
+- Los microservicios **`cliente/`**, **`producto/`** y **`compra-api/`** están migrados a **PostgreSQL** y lo hacen **sin ORM**: usan el driver `pg` con consultas SQL crudas y parametrizadas (`$1`, `$2`), siguiendo el patrón *Database per Service*.
 - La **ausencia de ORM es intencional** como requisito del taller: el objetivo es evidenciar los riesgos y costos del SQL hardcodeado en un proyecto real (mantenibilidad, falta de migraciones automáticas, posibilidad de inyección SQL si se eliminan los parámetros, acoplamiento al esquema concreto de la base). **No es una recomendación de buena práctica** para producción.
-- **`compra-api/` todavía no tiene persistencia real:** mantiene sus compras en un arreglo dentro de `src/data/` que se reinicia al reiniciar el proceso.
+- **`compra-api/`** persiste tanto en el encabezado `compras` como en su tabla de detalle `compra_detalle` mediante transacciones (`BEGIN` / `COMMIT`).
 
 ## Roadmap / Pendientes
 
 - [x] Migrar `producto/` de datos en memoria a una base de datos persistente.
-- [ ] Migrar `compra-api/` a persistencia (`compra_db` ya está contemplada en `database/`, con la tabla de rompimiento `compra_detalle`).
+- [x] Migrar `compra-api/` a persistencia (`compra_db` ya está contemplada en `database/`, con la tabla de rompimiento `compra_detalle`).
 - [x] Completar `producto/.env.example`.
 - [ ] Declarar el campo `engines` en los `package.json` para fijar la versión mínima de Node.
 

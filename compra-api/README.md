@@ -1,6 +1,6 @@
 # compra-api
 
-Servicio de compras en el taller de microservicios. Registra compras con datos **en memoria** y se comunica con `cliente-api` y `producto-api` vía HTTP (`fetch`) para validar que el cliente y el producto existan y que haya stock suficiente antes de crear una compra.
+Servicio de compras en el taller de microservicios. Registra compras con persistencia en PostgreSQL (`compra_db`) y se comunica con `cliente-api` y `producto-api` vía HTTP (`fetch`) para validar que el cliente y el producto existan y que haya stock suficiente antes de crear una compra.
 
 **Stack:** JavaScript (CommonJS) · Express 4 · Puerto `3003`
 
@@ -11,7 +11,7 @@ Servicio de compras en el taller de microservicios. Registra compras con datos *
 3. Si alguno de los dos servicios no responde, responde `503`.
 4. Si el cliente o el producto no existen (404 de los servicios), responde `404`.
 5. Si `producto.stock < cantidad`, responde `400`.
-6. Crea la compra con `total = producto.precio * cantidad` y responde `201`.
+6. En una transacción atómica de PostgreSQL, inserta la compra en `compras` y el desglose en `compra_detalle` con `total = producto.precio * cantidad` y responde `201`.
 
 ## Endpoints
 
@@ -24,9 +24,9 @@ Servicio de compras en el taller de microservicios. Registra compras con datos *
 ## Requisitos
 
 - Node.js 18+ (usa el `fetch` nativo; no hay `engines` declarado en `package.json`).
-- pnpm.
+- pnpm (o npm).
 - `cliente-api` (puerto 3001) y `producto-api` (puerto 3002) **ejecutándose**, porque `POST /compras` los consulta para validar.
-- **No necesita PostgreSQL**: los datos viven en `src/data/compras.js`.
+- PostgreSQL en ejecución con la base `compra_db` configurada mediante los scripts de [`database/`](../database/README.md).
 
 ## Variables de entorno
 
@@ -37,6 +37,11 @@ Copia `.env.example` a `.env`:
 | `PORT`                | `3003`                 | Puerto del servicio             |
 | `CLIENTE_API_URL`     | `http://localhost:3001`| URL base de cliente-api         |
 | `PRODUCTO_API_URL`    | `http://localhost:3002`| URL base de producto-api        |
+| `DB_HOST`             | `localhost`            | Host de PostgreSQL              |
+| `DB_PORT`             | `5432`                 | Puerto de PostgreSQL            |
+| `DB_NAME`             | `compra_db`            | Base de datos de compras        |
+| `DB_USER`             | `compra_user`          | Usuario de BD con privilegios mínimos |
+| `DB_PASSWORD`         | `compra_pass_123`      | Contraseña del usuario de BD    |
 
 ## Ejecutar en local
 
@@ -85,5 +90,5 @@ curl -X POST http://localhost:3003/compras \
 
 ## Notas
 
-- **Sin persistencia:** las compras se guardan en un arreglo (`src/data/compras.js`) que se pierde al reiniciar el proceso. Este servicio está **pendiente de migrar a una base de datos persistente** (la infraestructura `compra_db` con la tabla de rompimiento `compra_detalle` ya existe en [`database/`](../database/README.md)).
-- `pg` figura en las dependencias de `package.json` pero **no se usa** actualmente; queda listo para la migración.
+- Las compras se almacenan en la tabla `compras` y su desglose en `compra_detalle` dentro de `compra_db` mediante el driver `pg` y transacciones SQL (`BEGIN` / `COMMIT`).
+- El servidor verifica la conexión a PostgreSQL antes de comenzar a escuchar en el puerto HTTP.
