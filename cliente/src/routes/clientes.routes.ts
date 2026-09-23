@@ -38,4 +38,40 @@ router.post("/", (req, res) => {
   res.status(201).json(nuevoCliente);
 });
 
+// **PUT /clientes/:id
+router.put("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const cliente = clientes.find((cliente: Cliente) => cliente.id === id);
+
+  if (!cliente) {
+    return res.status(404).json({ mensaje: "Cliente no encontrado" });
+  }
+
+  const { nombre, email } = req.body;
+
+  if (!nombre || !email) {
+    return res
+      .status(400)
+      .json({ mensaje: "Los campos 'nombre' y 'email' son obligatorios" });
+  }
+
+  cliente.nombre = nombre;
+  cliente.email = email;
+
+  res.status(200).json(cliente);
+});
+
+// **DELETE /clientes/:id
+router.delete("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const indice = clientes.findIndex((cliente: Cliente) => cliente.id === id);
+
+  if (indice === -1) {
+    return res.status(404).json({ mensaje: "Cliente no encontrado" });
+  }
+
+  clientes.splice(indice, 1);
+  res.status(200).json({ mensaje: "Cliente eliminado correctamente" });
+});
+
 module.exports = router;
