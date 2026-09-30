@@ -4,10 +4,11 @@
 --
 -- Ejecutar conectado a cliente_db:
 --   psql -U postgres -d cliente_db -f 02-tablas-cliente.sql
+--
+-- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
+--   1. Conectarse manualmente a cliente_db
+--   2. Ejecutar este script
 -- ============================================================
-
--- Conexión segura a la base correcta (psql meta-ídem)
-\c cliente_db
 
 -- Tabla principal
 CREATE TABLE IF NOT EXISTS clientes (

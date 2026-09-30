@@ -9,7 +9,7 @@ Orden de ejecución para levantar las tres bases de datos con PostgreSQL.
 
 ## Orden de ejecución
 
-> **Importante:** estos scripts usan meta-comandos de psql (`\c`, `\set`, `\if`, `\gset`). Por eso **deben ejecutarse con `psql -f` desde una terminal**. No funcionarán si los pegas y ejecutas en un cliente gráfico como pgAdmin, DBeaver o DataGrip, que los enviaría al servidor como SQL y produciría `syntax error at or near "\"`.
+> **Importante:** `01-roles-y-bases.sql` no contiene meta-comandos de psql y puede ejecutarse con `psql -f` o con un cliente PostgreSQL, siempre que las sentencias `CREATE DATABASE` se envíen por separado y fuera de una transacción. Los scripts `02` a `05` usan el meta-comando de psql `\c` y **deben ejecutarse con `psql -f` desde una terminal**. No los pegues en pgAdmin, DBeaver o DataGrip, porque el cliente los enviaría al servidor y produciría `syntax error at or near "\"`.
 
 ```bash
 cd database/
@@ -30,7 +30,7 @@ psql -U postgres -f 04-tablas-compra.sql
 psql -U postgres -f 05-datos-prueba.sql
 ```
 
-Cada script usa `\c` para conectarse automáticamente a la base correcta, por lo que no es necesario cambiar de base manualmente.
+Los scripts `02` a `05` usan `\c` para conectarse automáticamente a la base correcta, por lo que no es necesario cambiar de base manualmente.
 
 ## Contraseñas por defecto
 
@@ -40,15 +40,7 @@ Cada script usa `\c` para conectarse automáticamente a la base correcta, por lo
 | `producto_user` | `producto_pass_123` |
 | `compra_user`   | `compra_pass_123`   |
 
-Para usar contraseñas personalizadas al ejecutar el paso 1:
-
-```bash
-psql -U postgres \
-  -v cliente_password=clave1 \
-  -v producto_password=clave2 \
-  -v compra_password=clave3 \
-  -f 01-roles-y-bases.sql
-```
+Para usar contraseñas personalizadas, descomenta y ajusta las sentencias `SET` al inicio de `01-roles-y-bases.sql`. Deben ejecutarse en la misma sesión, antes del bloque `DO`, para que los valores se apliquen a los tres roles.
 
 ## Diseño de bases de datos
 

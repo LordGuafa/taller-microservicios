@@ -4,9 +4,11 @@
 --
 -- Ejecutar conectado a compra_db:
 --   psql -U postgres -d compra_db -f 04-tablas-compra.sql
+--
+-- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
+--   1. Conectarse manualmente a compra_db
+--   2. Ejecutar este script
 -- ============================================================
-
-\c compra_db
 
 -- ------------------------------------------------------------
 -- 1. Encabezado de compra

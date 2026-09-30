@@ -108,7 +108,7 @@ Scripts disponibles (`compra-api/package.json`): `start` (`node src/server.js`),
 
 ## Configuración de PostgreSQL
 
-Solo `cliente` necesita PostgreSQL. Los scripts SQL están en la carpeta [`database/`](database/README.md) y **deben ejecutarse con `psql`** (usan meta-comandos de psql como `\c`, `\set`, `\if` y `\gset`, por lo que no funcionan en clientes gráficos como pgAdmin o DBeaver).
+Los scripts SQL están en [`database/`](database/README.md). El script `01-roles-y-bases.sql` puede ejecutarse con `psql` o un cliente PostgreSQL, enviando las sentencias `CREATE DATABASE` por separado; los scripts `02` a `05` **deben ejecutarse con `psql -f`**, porque usan meta-comandos que no funcionan en clientes gráficos como pgAdmin o DBeaver.
 
 ```bash
 cd database

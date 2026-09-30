@@ -4,9 +4,11 @@
 --
 -- Ejecutar conectado a producto_db:
 --   psql -U postgres -d producto_db -f 03-tablas-producto.sql
+--
+-- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
+--   1. Conectarse manualmente a producto_db
+--   2. Ejecutar este script
 -- ============================================================
-
-\c producto_db
 
 -- Tabla principal
 CREATE TABLE IF NOT EXISTS productos (

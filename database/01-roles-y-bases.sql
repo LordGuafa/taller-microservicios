@@ -5,40 +5,77 @@
 -- principio de MENOR PRIVILEGIO: cada usuario solo puede
 -- conectar y operar dentro de SU propia base de datos.
 --
--- Ejecutar como superusuario:
---   psql -U postgres -f 01-roles-y-bases.sql
--- Para usar otras contraseñas:
---   psql -U postgres -v cliente_password=mi_clave -f 01-roles-y-bases.sql
+-- IMPORTANTE: Este script debe ejecutarse con psql -f desde
+-- una terminal. No funciona en clientes gráficos (pgAdmin,
+-- DBeaver, DataGrip) porque las sentencias CREATE DATABASE
+-- no pueden ejecutarse dentro de una transacción.
+--
+-- Para cambiar las contraseñas, descomenta y ajusta los SET
+-- inmediatamente antes del bloque que crea los roles.
 -- ============================================================
+
+-- SET cliente_password  = 'mi_cliente_clave';
+-- SET producto_password = 'mi_producto_clave';
+-- SET compra_password   = 'mi_compra_clave';
 
 -- ------------------------------------------------------------
 -- 1. Roles de acceso por microservicio
 --
--- Si no se pasan con -v se usan estas contraseñas por defecto.
+-- Se usa un bloque DO para evitar los meta-comandos \if y \set,
+-- que algunos clientes envían por error al servidor SQL.
 -- ------------------------------------------------------------
-\if :{?cliente_password}
-\else
-  \set cliente_password 'cliente_pass_123'
-\endif
-\if :{?producto_password}
-\else
-  \set producto_password 'producto_pass_123'
-\endif
-\if :{?compra_password}
-\else
-  \set compra_password 'compra_pass_123'
-\endif
+DO $roles$
+DECLARE
+    v_cliente_password  text := COALESCE(
+        NULLIF(current_setting('cliente_password', true), ''),
+        'cliente_pass_123'
+    );
+    v_producto_password text := COALESCE(
+        NULLIF(current_setting('producto_password', true), ''),
+        'producto_pass_123'
+    );
+    v_compra_password   text := COALESCE(
+        NULLIF(current_setting('compra_password', true), ''),
+        'compra_pass_123'
+    );
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cliente_user') THEN
+        EXECUTE 'CREATE ROLE cliente_user NOLOGIN';
+    END IF;
+    EXECUTE format(
+        'ALTER ROLE cliente_user WITH LOGIN PASSWORD %L',
+        v_cliente_password
+    );
 
-CREATE ROLE cliente_user  LOGIN PASSWORD :'cliente_password';
-CREATE ROLE producto_user LOGIN PASSWORD :'producto_password';
-CREATE ROLE compra_user   LOGIN PASSWORD :'compra_password';
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'producto_user') THEN
+        EXECUTE 'CREATE ROLE producto_user NOLOGIN';
+    END IF;
+    EXECUTE format(
+        'ALTER ROLE producto_user WITH LOGIN PASSWORD %L',
+        v_producto_password
+    );
+
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'compra_user') THEN
+        EXECUTE 'CREATE ROLE compra_user NOLOGIN';
+    END IF;
+    EXECUTE format(
+        'ALTER ROLE compra_user WITH LOGIN PASSWORD %L',
+        v_compra_password
+    );
+END
+$roles$;
 
 -- ------------------------------------------------------------
 -- 2. Bases de datos por microservicio
+--
+-- Cada usuario es propietario de su base. Así, no es necesario
+-- cambiar de conexión para conceder permisos sobre el esquema public.
+--
+-- NOTA: Estas sentencias deben ejecutarse FUERA de una transacción.
 -- ------------------------------------------------------------
-CREATE DATABASE cliente_db;
-CREATE DATABASE producto_db;
-CREATE DATABASE compra_db;
+CREATE DATABASE cliente_db  OWNER cliente_user;
+CREATE DATABASE producto_db OWNER producto_user;
+CREATE DATABASE compra_db   OWNER compra_user;
 
 -- ------------------------------------------------------------
 -- 3. Privilegios mínimos a nivel de base de datos
@@ -47,27 +84,10 @@ CREATE DATABASE compra_db;
 -- nueva; lo revocamos para que SOLO el usuario de cada servicio
 -- pueda conectar a su propia base.
 -- ------------------------------------------------------------
-REVOKE CONNECT ON DATABASE cliente_db FROM PUBLIC;
+REVOKE CONNECT ON DATABASE cliente_db  FROM PUBLIC;
 REVOKE CONNECT ON DATABASE producto_db FROM PUBLIC;
-REVOKE CONNECT ON DATABASE compra_db FROM PUBLIC;
+REVOKE CONNECT ON DATABASE compra_db   FROM PUBLIC;
 
-GRANT CONNECT ON DATABASE cliente_db TO cliente_user;
+GRANT CONNECT ON DATABASE cliente_db  TO cliente_user;
 GRANT CONNECT ON DATABASE producto_db TO producto_user;
-GRANT CONNECT ON DATABASE compra_db TO compra_user;
-
--- ------------------------------------------------------------
--- 4. Privilegios dentro de cada base de datos
---
--- El usuario necesita USAGE y CREATE sobre el esquema public
--- para poder crear sus tablas y operar sobre ellas. Las tablas
--- concretas (SELECT/INSERT/UPDATE/DELETE) se otorgan en los
--- scripts 02/03/04.
--- ------------------------------------------------------------
-\c cliente_db
-GRANT USAGE, CREATE ON SCHEMA public TO cliente_user;
-
-\c producto_db
-GRANT USAGE, CREATE ON SCHEMA public TO producto_user;
-
-\c compra_db
-GRANT USAGE, CREATE ON SCHEMA public TO compra_user;
+GRANT CONNECT ON DATABASE compra_db   TO compra_user;
