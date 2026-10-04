@@ -10,6 +10,9 @@
 --   2. Ejecutar este script
 -- ============================================================
 
+\c cliente_db
+\set ON_ERROR_STOP on
+
 -- Tabla principal
 CREATE TABLE IF NOT EXISTS clientes (
     id          BIGSERIAL     PRIMARY KEY,

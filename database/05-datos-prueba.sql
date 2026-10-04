@@ -16,6 +16,9 @@
 -- CLIENTES (cliente_db) - 5 registros
 -- Ejecutar conectado a cliente_db
 -- ------------------------------------------------------------
+\c cliente_db
+\set ON_ERROR_STOP on
+
 INSERT INTO clientes (nombre, email) VALUES
     ('Ana Torres',    'ana.torres@correo.com'),
     ('Bruno Silva',   'bruno.silva@correo.com'),
@@ -25,6 +28,9 @@ INSERT INTO clientes (nombre, email) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- ------------------------------------------------------------
+\c producto_db
+\set ON_ERROR_STOP on
+
 -- PRODUCTOS (producto_db) - 5 registros
 -- Ejecutar conectado a producto_db
 -- ------------------------------------------------------------
@@ -37,6 +43,9 @@ INSERT INTO productos (nombre, precio, stock) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ------------------------------------------------------------
+\c compra_db
+\set ON_ERROR_STOP on
+
 -- COMPRAS + DETALLE (compra_db) - 5 compras con su detalle
 -- Ejecutar conectado a compra_db
 --

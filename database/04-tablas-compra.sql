@@ -18,6 +18,9 @@
 -- de datos (cliente_db y producto_db), y PostgreSQL no permite
 -- crear claves foráneas entre bases distintas.
 -- ------------------------------------------------------------
+\c compra_db
+\set ON_ERROR_STOP on
+
 CREATE TABLE IF NOT EXISTS compras (
     id          BIGSERIAL      PRIMARY KEY,
     cliente_id  BIGINT         NOT NULL,

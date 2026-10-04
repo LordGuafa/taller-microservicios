@@ -11,6 +11,9 @@
 -- ============================================================
 
 -- Tabla principal
+\c producto_db
+\set ON_ERROR_STOP on
+
 CREATE TABLE IF NOT EXISTS productos (
     id          BIGSERIAL      PRIMARY KEY,
     nombre      VARCHAR(100)   NOT NULL,
