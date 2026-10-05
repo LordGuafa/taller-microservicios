@@ -30,5 +30,20 @@ services:
       postgres:
         condition: service_healthy
 
+  producto:
+    build: ./producto
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: producto_db
+      DB_USER: producto_user
+      DB_PASSWORD: producto_pass_123
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
