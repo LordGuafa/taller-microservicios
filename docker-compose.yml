@@ -45,5 +45,26 @@ services:
       postgres:
         condition: service_healthy
 
+  compra-api:
+    build: ./compra-api
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: compra_db
+      DB_USER: compra_user
+      DB_PASSWORD: compra_pass_123
+      CLIENTE_API_URL: http://cliente:3001
+      PRODUCTO_API_URL: http://producto:3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cliente:
+        condition: service_started
+      producto:
+        condition: service_started
+
 volumes:
   pgdata:
