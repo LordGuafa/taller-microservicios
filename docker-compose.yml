@@ -21,14 +21,17 @@ services:
       - "3001:3001"
     environment:
       PORT: 3001
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: cliente_db
-      DB_USER: cliente_user
-      DB_PASSWORD: cliente_pass_123
+      # Prisma se conecta con una sola URL (ver src/config/database.ts)
+      DATABASE_URL: postgresql://cliente_user:cliente_pass_123@postgres:5432/cliente_db
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
 
   producto:
     build: ./producto
@@ -62,7 +65,7 @@ services:
       postgres:
         condition: service_healthy
       cliente:
-        condition: service_started
+        condition: service_healthy
       producto:
         condition: service_started
 

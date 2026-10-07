@@ -1,0 +1,19 @@
+// use prisma-8
+// !!Este comentario es obligatorio
+
+// Modelo sobre la tabla existente "clientes", creada por database/02-tablas-cliente.sql.
+// Prisma no es dueño de la tabla: solo la lee y escribe. Los nombres de columnas
+// en snake_case se exponen en camelCase con @map.
+model Cliente {
+  id        BigInt       @id(map: "clientes_pkey") @default(autoincrement())
+  nombre    VarChar(100)
+  email     VarChar(255)
+  // La BD pone la fecha al insertar; el trigger trg_clientes_updated_at
+  // actualiza updated_at en cada UPDATE.
+  createdAt Timestamp    @default(now()) @map("created_at")
+  updatedAt Timestamp    @default(now()) @map("updated_at")
+
+  @@index([email], map: "idx_clientes_email", unique: true)
+  @@index([nombre], map: "idx_clientes_nombre")
+  @@map("clientes")
+}

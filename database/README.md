@@ -46,7 +46,7 @@ Para usar contraseñas personalizadas, descomenta y ajusta las sentencias `SET` 
 
 | Base de datos   | Usuario         | Tablas                    |
 |-----------------|-----------------|---------------------------|
-| `cliente_db`    | `cliente_user`  | `clientes`                |
+| `cliente_db`    | `cliente_user`  | `clientes` (+ esquema `prisma_contract`, creado por Prisma) |
 | `producto_db`   | `producto_user` | `productos`               |
 | `compra_db`     | `compra_user`   | `compras`, `compra_detalle` |
 
@@ -65,7 +65,7 @@ Para usar contraseñas personalizadas, descomenta y ajusta las sentencias `SET` 
 
 | Base de datos   | Servicio en el repo | Estado actual                                  |
 |-----------------|---------------------|-------------------------------------------------|
-| `cliente_db`    | `cliente/`          | **Migrado**: el servicio usa esta base con `pg` (sin ORM). |
+| `cliente_db`    | `cliente/`          | **Migrado**: el servicio usa la tabla `clientes` con Prisma ORM 8. Prisma no modifica la tabla; al arrancar crea el esquema `prisma_contract` para registrar la versión de su contrato. |
 | `producto_db`   | `producto/`         | **Migrado**: el servicio usa esta base con `pg` y consultas parametrizadas. |
 | `compra_db`     | `compra-api/`       | **Migrado**: el servicio usa esta base con `pg`, transacciones y tablas `compras` y `compra_detalle`. |
 
