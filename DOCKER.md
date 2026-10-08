@@ -175,6 +175,7 @@ services:
       - "3003:3003"
     environment:
       PORT: 3003
+      DATABASE_URL: postgresql://compra_user:compra_pass_123@postgres:5432/compra_db
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: compra_db
@@ -189,6 +190,12 @@ services:
         condition: service_healthy
       producto:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
 volumes:
   pgdata:
