@@ -11,7 +11,8 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY src ./src
 COPY prisma ./prisma
+COPY index.js ./
 
 EXPOSE 3002
 
-CMD ["node", "src/server.js"]
+CMD ["node", "index.js"]

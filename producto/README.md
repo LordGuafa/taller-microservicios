@@ -55,8 +55,8 @@ Scripts disponibles:
 
 | Script    | Comando                  | Descripción          |
 |-----------|--------------------------|----------------------|
-| `dev`     | `nodemon src/server.js`  | Desarrollo con watch |
-| `start`   | `node src/server.js`     | Ejecución directa    |
+| `dev`     | `nodemon index.js`       | Desarrollo con watch |
+| `start`   | `node index.js`          | Ejecución directa    |
 | `contract:emit` | `prisma contract emit` | Regenera el contrato desde `prisma/contract.prisma` |
 | `db:init` | `prisma db init` | Verifica y firma la base según el contrato |
 
@@ -95,7 +95,7 @@ El modelo [`prisma/contract.prisma`](prisma/contract.prisma) describe la tabla e
 - `@@map("productos")` conecta el modelo `Producto` con la tabla SQL.
 - `@map("created_at")` y `@map("updated_at")` traducen los nombres snake_case a camelCase.
 - `contract.json` y `contract.d.ts` son archivos generados por `pnpm contract:emit`.
-- [`src/models/productos.js`](src/models/productos.js) concentra las operaciones ORM (`all`, `where().first`, `create`, `update` y `delete`); las rutas se encargan únicamente de HTTP.
+- [`src/models/producto.js`](src/models/producto.js) concentra las operaciones ORM (`all`, `where().first`, `create`, `update` y `delete`); los controladores gestionan HTTP y las rutas únicamente asocian URLs.
 - PostgreSQL sigue aplicando las restricciones y el trigger `updated_at`.
 
 Prisma devuelve `BIGINT` como `bigint` y `NUMERIC` como un valor numérico compatible con el runtime. Antes de responder, la ruta convierte `id` y `precio` a `Number` para conservar el formato que ya consume `compra-api`.

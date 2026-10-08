@@ -2,10 +2,10 @@
   "name": "producto",
   "version": "1.0.0",
   "description": "Microservicio de productos con Express, Prisma ORM y PostgreSQL",
-  "main": "src/server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "contract:emit": "prisma contract emit",
     "db:init": "prisma db init"
   },
