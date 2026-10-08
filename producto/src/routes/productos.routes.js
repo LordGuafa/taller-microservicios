@@ -67,4 +67,61 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PUT /productos/:id - actualizar
+router.put("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { nombre, precio, stock } = req.body ?? {};
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    if (!nombre || precio === undefined || stock === undefined) {
+      return res.status(400).json({
+        mensaje: "Los campos 'nombre', 'precio' y 'stock' son obligatorios"
+      });
+    }
+
+    const resultado = await pool.query(
+      "UPDATE productos SET nombre = $1, precio = $2, stock = $3 WHERE id = $4 RETURNING id, nombre, precio, stock",
+      [nombre, precio, stock, id]
+    );
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.status(200).json(normalizarProducto(resultado.rows[0]));
+  } catch (error) {
+    console.error("Error actualizando producto:", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+});
+
+// DELETE /productos/:id - eliminar
+router.delete("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    const resultado = await pool.query(
+      "DELETE FROM productos WHERE id = $1",
+      [id]
+    );
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ mensaje: "Producto no encontrado" });
+    }
+
+    res.status(200).json({ mensaje: "Producto eliminado correctamente" });
+  } catch (error) {
+    console.error("Error eliminando producto:", error);
+    res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;
