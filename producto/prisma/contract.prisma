@@ -1,0 +1,16 @@
+// use prisma-8
+// !!Este comentario es obligatorio
+
+// Contrato sobre la tabla existente "productos", creada por
+// database/03-tablas-producto.sql.
+model Producto {
+  id        BigInt       @id(map: "productos_pkey") @default(autoincrement())
+  nombre    VarChar(100)
+  precio    Numeric(10, 2)
+  stock     Int
+  createdAt Timestamp    @default(now()) @map("created_at")
+  updatedAt Timestamp    @default(now()) @map("updated_at")
+
+  @@index([nombre], map: "idx_productos_nombre")
+  @@map("productos")
+}

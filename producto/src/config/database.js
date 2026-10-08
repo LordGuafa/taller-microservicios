@@ -1,17 +1,20 @@
-const { Pool } = require("pg");
+require("dotenv").config();
+require("temporal-polyfill/global");
 
-const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || "producto_db",
-  user: process.env.DB_USER || "producto_user",
-  password: process.env.DB_PASSWORD || "producto_pass_123",
-  max: 10
-});
+const postgres = require("@prisma/orm-postgres/runtime").default;
+const contractJson = require("../../prisma/contract.json");
+
+const url = process.env.DATABASE_URL;
+
+if (!url) {
+  throw new Error("DATABASE_URL no está definido en las variables de entorno");
+}
+
+const db = postgres({ contractJson, url });
 
 async function verificarConexion() {
-  await pool.query("SELECT 1");
+  await db.orm.public.Producto.all();
   console.log("PostgreSQL conectado");
 }
 
-module.exports = { pool, verificarConexion };
+module.exports = { db, verificarConexion };

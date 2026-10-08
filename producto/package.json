@@ -1,26 +1,28 @@
 {
   "name": "producto",
   "version": "1.0.0",
-  "description": "",
+  "description": "Microservicio de productos con Express, Prisma ORM y PostgreSQL",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "contract:emit": "prisma contract emit",
+    "db:init": "prisma db init"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/orm-postgres": "8.0.0-rc.14",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "temporal-polyfill": "^1.0.5"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@types/node": "^26.6.1",
     "nodemon": "^3.1.14",
+    "prisma": "8.0.0-rc.20",
     "typescript": "^7.0.2"
   }
 }
