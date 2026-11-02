@@ -1,7 +1,7 @@
 // use prisma-8
 // !!Este comentario es obligatorio
 
-// Modelo sobre la tabla existente "clientes", creada por database/02-tablas-cliente.sql.
+// Modelo sobre la tabla existente "clientes", creada por database/cliente/01-tablas.sql.
 // Prisma no es dueño de la tabla: solo la lee y escribe. Los nombres de columnas
 // en snake_case se exponen en camelCase con @map.
 model Cliente {

@@ -1,17 +1,16 @@
 -- ============================================================
--- 03-tablas-producto.sql
--- Tabla de productos para la base producto_db.
+-- 01-tablas.sql
+-- Esquema de la base producto_db (contenedor postgres-producto).
 --
--- Ejecutar conectado a producto_db:
---   psql -U postgres -d producto_db -f 03-tablas-producto.sql
+-- Este script se ejecuta automáticamente dentro del contenedor
+-- PostgreSQL del microservicio producto, sobre la base definida
+-- por POSTGRES_DB (producto_db). No crea roles ni bases de datos:
+-- eso lo hace la imagen oficial de PostgreSQL al inicializarse.
 --
--- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
---   1. Conectarse manualmente a producto_db
---   2. Ejecutar este script
+-- Ejecución manual (servidor PostgreSQL propio):
+--   psql -U producto_user -d producto_db -f 01-tablas.sql
 -- ============================================================
 
--- Tabla principal
-\c producto_db
 \set ON_ERROR_STOP on
 
 CREATE TABLE IF NOT EXISTS productos (
@@ -22,14 +21,12 @@ CREATE TABLE IF NOT EXISTS productos (
     created_at  TIMESTAMP      NOT NULL DEFAULT now(),
     updated_at  TIMESTAMP      NOT NULL DEFAULT now(),
 
-    -- Restricciones de integridad a nivel de base de datos
     CONSTRAINT chk_precio_positivo CHECK (precio > 0),
     CONSTRAINT chk_stock_no_negativo CHECK (stock >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_productos_nombre ON productos (nombre);
 
--- Función y trigger para mantener updated_at automáticamente
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -43,7 +40,3 @@ CREATE TRIGGER trg_productos_updated_at
     BEFORE UPDATE ON productos
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
-
--- Privilegios mínimos
-GRANT SELECT, INSERT, UPDATE, DELETE ON productos TO producto_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO producto_user;

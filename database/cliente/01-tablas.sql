@@ -1,19 +1,18 @@
 -- ============================================================
--- 02-tablas-cliente.sql
--- Tabla de clientes para la base cliente_db.
+-- 01-tablas.sql
+-- Esquema de la base cliente_db (contenedor postgres-cliente).
 --
--- Ejecutar conectado a cliente_db:
---   psql -U postgres -d cliente_db -f 02-tablas-cliente.sql
+-- Este script se ejecuta automáticamente dentro del contenedor
+-- PostgreSQL del microservicio cliente, sobre la base definida
+-- por POSTGRES_DB (cliente_db). No crea roles ni bases de datos:
+-- eso lo hace la imagen oficial de PostgreSQL al inicializarse.
 --
--- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
---   1. Conectarse manualmente a cliente_db
---   2. Ejecutar este script
+-- Ejecución manual (servidor PostgreSQL propio):
+--   psql -U cliente_user -d cliente_db -f 01-tablas.sql
 -- ============================================================
 
-\c cliente_db
 \set ON_ERROR_STOP on
 
--- Tabla principal
 CREATE TABLE IF NOT EXISTS clientes (
     id          BIGSERIAL     PRIMARY KEY,
     nombre      VARCHAR(100)  NOT NULL,
@@ -22,12 +21,9 @@ CREATE TABLE IF NOT EXISTS clientes (
     updated_at  TIMESTAMP     NOT NULL DEFAULT now()
 );
 
--- Restricción única sobre el email (ya creada por la cláusula
--- UNIQUE, se refuerza con índice explícito para búsqueda por nombre)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_email ON clientes (email);
 CREATE INDEX IF NOT EXISTS idx_clientes_nombre ON clientes (nombre);
 
--- Función y trigger para mantener updated_at automáticamente
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -41,8 +37,3 @@ CREATE TRIGGER trg_clientes_updated_at
     BEFORE UPDATE ON clientes
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
-
--- Privilegios mínimos: el usuario solo puede leer/escribir sus
--- tablas, nunca modificar la estructura del esquema
-GRANT SELECT, INSERT, UPDATE, DELETE ON clientes TO cliente_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cliente_user;

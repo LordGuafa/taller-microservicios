@@ -1,18 +1,22 @@
 # Dockerización de los Microservicios
 
-Guía para ejecutar todo el taller (3 microservicios + PostgreSQL) con Docker.
+Guía para ejecutar el taller con Docker. Cada microservicio (**cliente**, **producto** y **compra-api**) tiene su **propia imagen de PostgreSQL**, su propio volumen, usuario, base de datos y red. No hay una base compartida: el despliegue simula servicios independientes, como ocurriría en Azure con una base de datos por servicio (*Database per Service*).
 
 ## Estructura de archivos
 
 ```
 taller-microservicios/
-├── docker-compose.yml          # orquesta los 3 servicios + PostgreSQL
+├── docker-compose.yml          # 3 servicios + 3 PostgreSQL independientes
 ├── database/
-│   ├── 01-roles-y-bases.sql
-│   ├── 02-tablas-cliente.sql
-│   ├── 03-tablas-producto.sql
-│   ├── 04-tablas-compra.sql
-│   └── 05-datos-prueba.sql
+│   ├── cliente/
+│   │   ├── 01-tablas.sql
+│   │   └── 02-datos-prueba.sql
+│   ├── producto/
+│   │   ├── 01-tablas.sql
+│   │   └── 02-datos-prueba.sql
+│   └── compra/
+│       ├── 01-tablas.sql
+│       └── 02-datos-prueba.sql
 ├── cliente/
 │   ├── Dockerfile
 │   ├── .dockerignore
@@ -30,8 +34,6 @@ taller-microservicios/
     ├── .dockerignore
     └── src/
 ```
-
-> Cada servicio tiene su propio `Dockerfile` (dentro de su carpeta) y un `docker-compose.yml` único en la raíz.
 
 ---
 
@@ -80,39 +82,30 @@ CMD ["sh", "-c", "pnpm exec prisma db init && exec node_modules/.bin/tsx index.t
 
 Diferencias con los otros servicios:
 
-- **Una sola etapa, sin `tsc`:** el servicio se ejecuta directamente con `tsx`, igual que con `pnpm start` en local. No se genera `dist/`.
-- **Node 24:** Prisma 8 necesita Node 22.18 o superior. `producto` y `compra-api` siguen en Node 20.
-- **Se instalan las devDependencies:** `tsx` y el CLI de `prisma` son de desarrollo, pero el contenedor los necesita para arrancar.
+- **Una sola etapa, sin `tsc`:** el servicio se ejecuta directamente con `tsx`.
+- **Node 24:** Prisma 8 necesita Node 22.18 o superior.
+- **Se instalan las devDependencies:** `tsx` y el CLI de `prisma` son necesarios para arrancar.
 - **`pnpm-workspace.yaml` es obligatorio:** sin él, pnpm no ejecuta los scripts de instalación de `esbuild` y `workerd`, ni aplica el override de `arktype`.
-- **Preparación de la base de datos al arrancar:** `prisma db init` firma la base de datos con el contrato de Prisma antes de levantar el servidor. Si falla (por ejemplo, porque la base no responde o el contrato no coincide con la tabla), el contenedor se detiene y el error aparece en `docker compose logs cliente`.
-- **Solo pnpm:** no hay variante con npm. El proyecto depende de `pnpm-workspace.yaml` y de `pnpm-lock.yaml`.
+- **Preparación de la base de datos al arrancar:** `prisma db init` firma la base de datos con el contrato de Prisma antes de levantar el servidor.
 
 ### `producto/Dockerfile` y `compra-api/Dockerfile` (JavaScript, sin compilación)
 
-**Con pnpm:**
-
 ```dockerfile
-FROM node:20-alpine
+# producto usa Node 24; compra-api usa Node 20
+FROM node:24-alpine
 WORKDIR /app
-RUN corepack enable pnpm
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod
+ENV NODE_ENV=production
+RUN npm install -g pnpm@11
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --prod
 COPY src ./src
-EXPOSE 3002   # usa 3003 en compra-api/Dockerfile
-CMD ["node", "src/server.js"]
+COPY prisma ./prisma
+COPY index.js ./
+EXPOSE 3002
+CMD ["node", "index.js"]
 ```
 
-**Con npm:**
-
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm install --omit=dev
-COPY src ./src
-EXPOSE 3002   # usa 3003 en compra-api/Dockerfile
-CMD ["node", "src/server.js"]
-```
+`compra-api/Dockerfile` es equivalente, pero usa `node:20-alpine`, pnpm 10, solo copia `src/`, expone `3003` y arranca con `node src/server.js`.
 
 ---
 
@@ -120,21 +113,27 @@ CMD ["node", "src/server.js"]
 
 ```yaml
 services:
-  postgres:
+  # ------------------------------------------------------------
+  # Microservicio cliente + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-cliente:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: cliente_user
+      POSTGRES_PASSWORD: cliente_pass_123
+      POSTGRES_DB: cliente_db
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./database:/docker-entrypoint-initdb.d
+      - pgdata-cliente:/var/lib/postgresql/data
+      - ./database/cliente:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U cliente_user -d cliente_db"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - cliente-net
 
   cliente:
     build: ./cliente
@@ -142,10 +141,9 @@ services:
       - "3001:3001"
     environment:
       PORT: 3001
-      # Prisma se conecta con una sola URL (ver src/config/database.ts)
-      DATABASE_URL: postgresql://cliente_user:cliente_pass_123@postgres:5432/cliente_db
+      DATABASE_URL: postgresql://cliente_user:cliente_pass_123@postgres-cliente:5432/cliente_db
     depends_on:
-      postgres:
+      postgres-cliente:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
@@ -153,6 +151,30 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
+    networks:
+      - cliente-net
+
+  # ------------------------------------------------------------
+  # Microservicio producto + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-producto:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: producto_user
+      POSTGRES_PASSWORD: producto_pass_123
+      POSTGRES_DB: producto_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata-producto:/var/lib/postgresql/data
+      - ./database/producto:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U producto_user -d producto_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - producto-net
 
   producto:
     build: ./producto
@@ -160,14 +182,34 @@ services:
       - "3002:3002"
     environment:
       PORT: 3002
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: producto_db
-      DB_USER: producto_user
-      DB_PASSWORD: producto_pass_123
+      DATABASE_URL: postgresql://producto_user:producto_pass_123@postgres-producto:5432/producto_db
     depends_on:
-      postgres:
+      postgres-producto:
         condition: service_healthy
+    networks:
+      - producto-net
+
+  # ------------------------------------------------------------
+  # Microservicio compra + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-compra:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: compra_user
+      POSTGRES_PASSWORD: compra_pass_123
+      POSTGRES_DB: compra_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata-compra:/var/lib/postgresql/data
+      - ./database/compra:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compra_user -d compra_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - compra-net
 
   compra-api:
     build: ./compra-api
@@ -175,16 +217,11 @@ services:
       - "3003:3003"
     environment:
       PORT: 3003
-      DATABASE_URL: postgresql://compra_user:compra_pass_123@postgres:5432/compra_db
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: compra_db
-      DB_USER: compra_user
-      DB_PASSWORD: compra_pass_123
+      DATABASE_URL: postgresql://compra_user:compra_pass_123@postgres-compra:5432/compra_db
       CLIENTE_API_URL: http://cliente:3001
       PRODUCTO_API_URL: http://producto:3002
     depends_on:
-      postgres:
+      postgres-compra:
         condition: service_healthy
       cliente:
         condition: service_healthy
@@ -196,29 +233,70 @@ services:
       timeout: 3s
       retries: 10
       start_period: 15s
+    networks:
+      # compra-api solo comparte red con las APIs que consume por HTTP.
+      - compra-net
+      - cliente-net
+      - producto-net
+
+networks:
+  cliente-net:
+  producto-net:
+  compra-net:
 
 volumes:
-  pgdata:
+  pgdata-cliente:
+  pgdata-producto:
+  pgdata-compra:
 ```
 
 ---
 
 ## 4. Puntos clave
 
-- **Dentro de Docker, nada usa `localhost`**: las bases de datos se referencian con el host `postgres` (`DB_HOST: postgres` en producto y compra-api, `@postgres:5432` dentro de `DATABASE_URL` en cliente) y los servicios entre sí con `http://cliente:3001`, `http://producto:3002` (nombres de los servicios en compose).
-- **PostgreSQL se publica en el puerto `5433` del host** (`"5433:5432"`), para no chocar con un PostgreSQL local en el `5432`. Dentro de la red de Docker sigue siendo `postgres:5432`. Para conectarte desde tu máquina: `psql -h localhost -p 5433 -U postgres`.
-- **cliente usa `DATABASE_URL`**, no las variables `DB_*`: Prisma se conecta con una sola URL.
-- **Orden de arranque:** `compra-api` espera a que `cliente` esté sano (`service_healthy`). El healthcheck de `cliente` consulta `GET /health`, y ese endpoint solo responde cuando `prisma db init` terminó y el servidor ya está escuchando. Por eso `start_period: 20s`: el primer arranque tarda unos segundos más.
-- **La tabla `clientes` la crea `02-tablas-cliente.sql`, no Prisma.** Al arrancar, `prisma db init` comprueba que la tabla coincide con el contrato (`cliente/prisma/contract.prisma`) y firma la base de datos en el esquema `prisma_contract`. Si cambias el contrato, reconstruye la imagen (`docker compose up -d --build cliente`).
-- Los scripts de `database/` se montan en `/docker-entrypoint-initdb.d` y se ejecutan **una sola vez**, al crearse el volumen `pgdata`. Para re-ejecutarlos: `docker compose down -v` (borra los datos) y `docker compose up`.
-- Si los scripts con `\c` fallan en tu versión de psql, ejecútalos a mano:
+- **Tres PostgreSQL independientes:** `postgres-cliente`, `postgres-producto` y `postgres-compra`. Cada uno tiene su propia base, usuario, contraseña, volumen y scripts de inicialización.
+- **Redes aisladas:** cada base solo está en la red de su microservicio (`cliente-net`, `producto-net`, `compra-net`). Ningún servicio está configurado para conectarse a la base de otro.
+- **Dentro de Docker, nada usa `localhost` para las bases:** cada servicio apunta al host de **su** contenedor:
+  - cliente → `postgres-cliente:5432`
+  - producto → `postgres-producto:5432`
+  - compra-api → `postgres-compra:5432`
+- **Comunicación HTTP:** `compra-api` usa `http://cliente:3001` y `http://producto:3002`. Por eso comparte red con esas dos APIs, pero no con sus bases de datos.
+- **Puertos publicados en el host** para inspección manual:
+  - `localhost:5433` → `cliente_db`
+  - `localhost:5434` → `producto_db`
+  - `localhost:5435` → `compra_db`
+- **Inicialización automática:** cada carpeta de `database/` se monta en el `docker-entrypoint-initdb.d` de su contenedor. PostgreSQL ejecuta `01-tablas.sql` y luego `02-datos-prueba.sql` **una sola vez**, al crearse el volumen correspondiente.
+- **Re-ejecutar scripts:** `docker compose down -v` borra los tres volúmenes y fuerza la inicialización de nuevo en el siguiente `docker compose up`.
+- **Si vienes de la versión anterior con un solo `postgres`:** elimina el contenedor y el volumen antiguos antes de levantar la nueva configuración:
   ```bash
-  docker compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/01-roles-y-bases.sql
-  # ... repetir con 02, 03, 04, 05
+  docker compose down -v --remove-orphans
+  docker compose up -d --build
   ```
+- **La tabla `clientes` la crea `database/cliente/01-tablas.sql`, no Prisma.** Al arrancar, `prisma db init` comprueba el contrato y firma la base en el esquema `prisma_contract`.
 - No copies los `.env` a las imágenes (están en `.dockerignore`); las variables se inyectan desde `docker-compose.yml`.
 
-## 5. Comandos
+## 5. Conexión manual a cada base
+
+```bash
+# Cliente
+psql -h localhost -p 5433 -U cliente_user -d cliente_db
+
+# Producto
+psql -h localhost -p 5434 -U producto_user -d producto_db
+
+# Compra
+psql -h localhost -p 5435 -U compra_user -d compra_db
+```
+
+O directamente con Docker:
+
+```bash
+docker compose exec postgres-cliente psql -U cliente_user -d cliente_db
+docker compose exec postgres-producto psql -U producto_user -d producto_db
+docker compose exec postgres-compra psql -U compra_user -d compra_db
+```
+
+## 6. Comandos
 
 ```bash
 # Levantar todo (construye las imágenes la primera vez)
@@ -236,11 +314,11 @@ docker compose logs -f compra-api
 # Detener
 docker compose down
 
-# Detener y borrar el volumen de la base de datos
+# Detener y borrar los datos de las tres bases
 docker compose down -v
 ```
 
-## 6. Verificación
+## 7. Verificación
 
 ```bash
 # Estado de los contenedores: cliente debe aparecer como "(healthy)"

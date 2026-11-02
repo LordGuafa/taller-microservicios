@@ -1,60 +1,12 @@
 -- ============================================================
--- 05-datos-prueba.sql
--- Datos mínimos coherentes para las tres bases de datos.
+-- 02-datos-prueba.sql
+-- Datos de prueba para compra_db (contenedor postgres-compra).
 --
--- Ejecutar como superusuario conectado a cada base:
---   psql -U postgres -d cliente_db  -f 05-datos-prueba.sql
---   psql -U postgres -d producto_db -f 05-datos-prueba.sql
---   psql -U postgres -d compra_db   -f 05-datos-prueba.sql
---
--- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
---   1. Conectarse manualmente a cada base de datos
---   2. Ejecutar solo la sección correspondiente
+-- Se ejecuta automáticamente después de 01-tablas.sql en el
+-- mismo contenedor y sobre la misma base de datos.
 -- ============================================================
 
--- ------------------------------------------------------------
--- CLIENTES (cliente_db) - 5 registros
--- Ejecutar conectado a cliente_db
--- ------------------------------------------------------------
-\c cliente_db
 \set ON_ERROR_STOP on
-
-INSERT INTO clientes (nombre, email) VALUES
-    ('Ana Torres',    'ana.torres@correo.com'),
-    ('Bruno Silva',   'bruno.silva@correo.com'),
-    ('Carla Mendez',  'carla.mendez@correo.com'),
-    ('Diego Fernandez','diego.fernandez@correo.com'),
-    ('Elena Ruiz',    'elena.ruiz@correo.com')
-ON CONFLICT (email) DO NOTHING;
-
--- ------------------------------------------------------------
-\c producto_db
-\set ON_ERROR_STOP on
-
--- PRODUCTOS (producto_db) - 5 registros
--- Ejecutar conectado a producto_db
--- ------------------------------------------------------------
-INSERT INTO productos (nombre, precio, stock) VALUES
-    ('Laptop',       1500.00, 10),
-    ('Mouse',          25.50, 50),
-    ('Teclado',        45.00, 40),
-    ('Monitor',       300.00, 15),
-    ('Auriculares',    60.00, 30)
-ON CONFLICT DO NOTHING;
-
--- ------------------------------------------------------------
-\c compra_db
-\set ON_ERROR_STOP on
-
--- COMPRAS + DETALLE (compra_db) - 5 compras con su detalle
--- Ejecutar conectado a compra_db
---
--- Cliente 1 (Ana) compra Laptop + Mouse
--- Cliente 2 (Bruno) compra Teclado
--- Cliente 3 (Carla) compra Monitor + Teclado
--- Cliente 4 (Diego) compra Laptop
--- Cliente 5 (Elena) compra Auriculares + Mouse
--- ------------------------------------------------------------
 
 -- Compra 1: cliente 1 - Laptop (producto 1) + Mouse (producto 2)
 WITH nueva_compra AS (

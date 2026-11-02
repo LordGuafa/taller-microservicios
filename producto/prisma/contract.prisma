@@ -2,7 +2,7 @@
 // !!Este comentario es obligatorio
 
 // Contrato sobre la tabla existente "productos", creada por
-// database/03-tablas-producto.sql.
+// database/producto/01-tablas.sql.
 model Producto {
   id        BigInt       @id(map: "productos_pkey") @default(autoincrement())
   nombre    VarChar(100)

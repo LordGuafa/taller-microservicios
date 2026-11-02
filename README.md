@@ -91,11 +91,11 @@ Scripts disponibles (`cliente/package.json`): `dev` (`tsx watch index.ts`), `sta
 ```bash
 cd producto
 pnpm install
-cp .env.example .env  # ajustar credenciales de PostgreSQL si hace falta
+cp .env.example .env   # ajustar DATABASE_URL si hace falta
 pnpm dev               # nodemon
 ```
 
-No requiere variables de entorno: el puerto por defecto es 3002 (aunque hay un `producto/.env.example` incompleto, ver abajo). Scripts disponibles (`producto/package.json`): `start` (`node src/server.js`), `dev` (`nodemon src/server.js`).
+`producto` requiere `DATABASE_URL` para conectarse a `producto_db` (ver [`producto/.env.example`](producto/.env.example)). Scripts disponibles (`producto/package.json`): `start` (`node index.js`), `dev` (`nodemon index.js`).
 
 ### compra-api (puerto 3003)
 
@@ -106,68 +106,65 @@ cp .env.example .env   # mantener las URLs que apuntan a cliente-api y producto-
 pnpm dev               # nodemon
 ```
 
-Scripts disponibles (`compra-api/package.json`): `start` (`node src/server.js`), `dev` (`nodemon src/server.js`).
+`compra-api` requiere `DATABASE_URL` (o las variables `DB_*`) para conectarse a `compra_db`. Scripts disponibles (`compra-api/package.json`): `start` (`node src/server.js`), `dev` (`nodemon src/server.js`).
 
 **Orden recomendado:** primero `cliente` y `producto`, y luego `compra-api`, ya que este último consulta a los otros dos al crear compras.
 
 ## Ejecución con Docker
 
-Todo el taller (PostgreSQL + los tres servicios) se levanta con el `docker-compose.yml` de la raíz:
+Todo el taller (3 servicios + 3 instancias PostgreSQL independientes) se levanta con el `docker-compose.yml` de la raíz:
 
 ```bash
 docker compose up -d --build
 docker compose ps   # cliente debe aparecer como "(healthy)"
 ```
 
-- PostgreSQL queda publicado en el puerto **`5433`** del host, para no chocar con un PostgreSQL local. Los scripts de `database/` se ejecutan solos la primera vez que se crea el volumen.
+- **Cada microservicio tiene su propio PostgreSQL**, con base, usuario, volumen y scripts separados: `postgres-cliente` (`:5433`), `postgres-producto` (`:5434`) y `postgres-compra` (`:5435`). No existe una base de datos compartida.
+- Cada base está aislada en la red de su microservicio. `compra-api` además comparte red con `cliente` y `producto` para consumir sus APIs por HTTP.
+- Los scripts de `database/cliente/`, `database/producto/` y `database/compra/` se ejecutan solos la primera vez que se crea el volumen de cada contenedor.
 - `cliente` ejecuta `prisma db init` al arrancar y tiene un healthcheck sobre `GET /health`. `compra-api` espera a que esté sano antes de iniciar.
 
 Dockerfiles, configuración y comandos en [`DOCKER.md`](DOCKER.md).
 
 ## Configuración de PostgreSQL
 
-Los scripts SQL están en [`database/`](database/README.md). El script `01-roles-y-bases.sql` puede ejecutarse con `psql` o un cliente PostgreSQL, enviando las sentencias `CREATE DATABASE` por separado; los scripts `02` a `05` **deben ejecutarse con `psql -f`**, porque usan meta-comandos que no funcionan en clientes gráficos como pgAdmin o DBeaver.
+Cada microservicio usa una instancia PostgreSQL independiente, igual que en un despliegue real con *Database per Service*. Los scripts están separados por servicio en [`database/`](database/README.md):
 
-```bash
-cd database
-
-# 1. Roles y bases de datos (cliente_db, producto_db, compra_db)
-psql -U postgres -f 01-roles-y-bases.sql
-
-# 2. Tablas de cliente (dentro de cliente_db)
-psql -U postgres -f 02-tablas-cliente.sql
-
-# 3. Tablas de producto (dentro de producto_db)
-psql -U postgres -f 03-tablas-producto.sql
-
-# 4. Tablas de compra (dentro de compra_db, incluye compra_detalle N:N)
-psql -U postgres -f 04-tablas-compra.sql
-
-# 5. Datos de prueba (5 clientes, 5 productos, 5 compras)
-psql -U postgres -f 05-datos-prueba.sql
+```
+database/
+├── cliente/     01-tablas.sql, 02-datos-prueba.sql   → cliente_db
+├── producto/    01-tablas.sql, 02-datos-prueba.sql   → producto_db
+└── compra/      01-tablas.sql, 02-datos-prueba.sql   → compra_db
 ```
 
-Los scripts 03 y 04 crean las bases `producto_db` y `compra_db`; `producto-api` ya consume `producto_db`, mientras `compra_db` queda preparada para una futura migración.
+Con Docker no hay que ejecutarlos a mano: cada carpeta se monta en el `docker-entrypoint-initdb.d` de su contenedor y la imagen oficial de PostgreSQL los ejecuta en orden alfabético sobre la base indicada por `POSTGRES_DB`.
+
+Para re-ejecutarlos desde cero:
+
+```bash
+docker compose down -v   # borra los tres volúmenes
+docker compose up -d
+```
+
+Para ejecutarlos manualmente en un PostgreSQL propio, crea cada base y usuario y luego ejecuta los scripts de su carpeta. El detalle está en [`database/README.md`](database/README.md).
 
 ## Variables de entorno
+
+Los `.env.example` usan los puertos publicados por los contenedores PostgreSQL en el host (`5433`, `5434` y `5435`) para desarrollo local.
 
 ### cliente (`cliente/.env.example`)
 
 | Variable       | Valor por defecto      | Descripción                      |
 |----------------|------------------------|----------------------------------|
 | `PORT`         | `3001`                 | Puerto del servicio              |
-| `DATABASE_URL` | `postgresql://cliente_user:cliente_pass_123@localhost:5432/cliente_db` | Conexión a PostgreSQL para Prisma (obligatoria). Debe escribirse completa: `dotenv` no expande `${...}`. |
+| `DATABASE_URL` | `postgresql://cliente_user:cliente_pass_123@localhost:5433/cliente_db` | Conexión a PostgreSQL para Prisma (obligatoria). Debe escribirse completa: `dotenv` no expande `${...}`. |
 
 ### producto (`producto/.env.example`)
 
 | Variable       | Valor por defecto      | Descripción                      |
 |----------------|------------------------|----------------------------------|
 | `PORT`         | `3002`                 | Puerto del servicio              |
-| `DB_HOST`      | `localhost`            | Host de PostgreSQL               |
-| `DB_PORT`      | `5432`                 | Puerto de PostgreSQL             |
-| `DB_NAME`      | `producto_db`          | Base de datos de productos       |
-| `DB_USER`      | `producto_user`        | Usuario de BD con privilegios mínimos |
-| `DB_PASSWORD`  | `producto_pass_123`    | Contraseña del usuario de BD     |
+| `DATABASE_URL` | `postgresql://producto_user:producto_pass_123@localhost:5434/producto_db` | Conexión a PostgreSQL para Prisma (obligatoria). |
 
 ### compra-api (`compra-api/.env.example`)
 
@@ -176,10 +173,11 @@ Los scripts 03 y 04 crean las bases `producto_db` y `compra_db`; `producto-api` 
 | `PORT`                | `3003`                 | Puerto del servicio             |
 | `CLIENTE_API_URL`     | `http://localhost:3001`| URL base de cliente-api         |
 | `PRODUCTO_API_URL`    | `http://localhost:3002`| URL base de producto-api        |
+| `DATABASE_URL`        | `postgresql://compra_user:compra_pass_123@localhost:5435/compra_db` | Conexión a PostgreSQL para Sequelize |
 | `DB_HOST`             | `localhost`            | Host de PostgreSQL              |
-| `DB_PORT`             | `5432`                 | Puerto de PostgreSQL            |
+| `DB_PORT`             | `5435`                 | Puerto de PostgreSQL            |
 | `DB_NAME`             | `compra_db`            | Base de datos de compras        |
-| `DB_USER`             | `compra_user`          | Usuario de BD con privilegios mínimos |
+| `DB_USER`             | `compra_user`          | Usuario de BD                   |
 | `DB_PASSWORD`         | `compra_pass_123`      | Contraseña del usuario de BD    |
 
 ## Endpoints por servicio
@@ -243,13 +241,13 @@ curl http://localhost:3003/compras
 
 - Los tres microservicios persisten en **PostgreSQL**, cada uno en su propia base, siguiendo el patrón *Database per Service*.
 - **`producto/`** y **`compra-api/`** lo hacen **sin ORM**: usan el driver `pg` con consultas SQL crudas y parametrizadas (`$1`, `$2`). La **ausencia de ORM es intencional** como requisito del taller: el objetivo es evidenciar los riesgos y costos del SQL hardcodeado en un proyecto real (mantenibilidad, falta de migraciones automáticas, posibilidad de inyección SQL si se eliminan los parámetros, acoplamiento al esquema concreto de la base). **No es una recomendación de buena práctica** para producción.
-- **`cliente/`** empezó igual, pero se migró a **Prisma ORM 8** (versión preliminar) como contraste: las consultas se escriben con el ORM (`db.orm.public.Cliente`) y los tipos de TypeScript se generan desde un contrato (`cliente/prisma/contract.prisma`). La tabla `clientes` sigue siendo la que crea `database/02-tablas-cliente.sql`: Prisma la lee y escribe, pero no modifica su estructura.
+- **`cliente/`** empezó igual, pero se migró a **Prisma ORM 8** (versión preliminar) como contraste: las consultas se escriben con el ORM (`db.orm.public.Cliente`) y los tipos de TypeScript se generan desde un contrato (`cliente/prisma/contract.prisma`). La tabla `clientes` sigue siendo la que crea `database/cliente/01-tablas.sql`: Prisma la lee y escribe, pero no modifica su estructura.
 - **`compra-api/`** persiste tanto en el encabezado `compras` como en su tabla de detalle `compra_detalle` mediante transacciones (`BEGIN` / `COMMIT`).
 
 ## Roadmap / Pendientes
 
 - [x] Migrar `producto/` de datos en memoria a una base de datos persistente.
-- [x] Migrar `compra-api/` a persistencia (`compra_db` ya está contemplada en `database/`, con la tabla de rompimiento `compra_detalle`).
+- [x] Migrar `compra-api/` a persistencia (`compra_db` ya está contemplada en `database/compra/`, con la tabla de rompimiento `compra_detalle`).
 - [x] Completar `producto/.env.example`.
 - [x] Migrar `cliente/` a Prisma ORM 8 y agregar `PUT`, `DELETE` y `/health`.
 - [x] Dockerizar los tres servicios con un `docker-compose.yml` único.

@@ -18,7 +18,7 @@ Servicio de catálogo de productos en el taller de microservicios. Expone consul
 
 - Node.js 22.18 o superior (Prisma 8 lo exige).
 - pnpm 11.20 o superior (es el gestor usado por el lockfile y Docker).
-- PostgreSQL en ejecución con la base `producto_db` configurada mediante los scripts de [`database/`](../database/README.md).
+- PostgreSQL independiente para este servicio, con la base `producto_db` y los scripts de [`database/producto/`](../database/producto/).
 
 ## Variables de entorno
 
@@ -45,10 +45,10 @@ Para usar la configuración incluida en [`docker-compose.yml`](../docker-compose
 inicia Docker Desktop y luego, desde la raíz del repositorio:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres-producto
 ```
 
-El contenedor publica PostgreSQL en `localhost:5433`. Cuando esté saludable,
+El contenedor publica PostgreSQL en `localhost:5434`. Cuando esté saludable,
 vuelve a `producto` y ejecuta `pnpm db:init` y `pnpm dev`.
 
 Scripts disponibles:
@@ -90,7 +90,7 @@ curl -X DELETE http://localhost:3002/productos/1
 
 ## Persistencia con Prisma
 
-El modelo [`prisma/contract.prisma`](prisma/contract.prisma) describe la tabla existente `productos`; no reemplaza los scripts SQL de [`database/03-tablas-producto.sql`](../database/03-tablas-producto.sql).
+El modelo [`prisma/contract.prisma`](prisma/contract.prisma) describe la tabla existente `productos`; no reemplaza los scripts SQL de [`database/producto/01-tablas.sql`](../database/producto/01-tablas.sql).
 
 - `@@map("productos")` conecta el modelo `Producto` con la tabla SQL.
 - `@map("created_at")` y `@map("updated_at")` traducen los nombres snake_case a camelCase.

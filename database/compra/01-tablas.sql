@@ -1,26 +1,27 @@
 -- ============================================================
--- 04-tablas-compra.sql
--- Tablas de compras y su detalle N:N para la base compra_db.
+-- 01-tablas.sql
+-- Esquema de la base compra_db (contenedor postgres-compra).
 --
--- Ejecutar conectado a compra_db:
---   psql -U postgres -d compra_db -f 04-tablas-compra.sql
+-- Este script se ejecuta automáticamente dentro del contenedor
+-- PostgreSQL del microservicio compra, sobre la base definida
+-- por POSTGRES_DB (compra_db). No crea roles ni bases de datos:
+-- eso lo hace la imagen oficial de PostgreSQL al inicializarse.
 --
--- En clientes gráficos (pgAdmin, DBeaver, DataGrip):
---   1. Conectarse manualmente a compra_db
---   2. Ejecutar este script
+-- Ejecución manual (servidor PostgreSQL propio):
+--   psql -U compra_user -d compra_db -f 01-tablas.sql
 -- ============================================================
+
+\set ON_ERROR_STOP on
 
 -- ------------------------------------------------------------
 -- 1. Encabezado de compra
 --
 -- cliente_id y producto_id se guardan como valores simples
--- (sin FK) porque las tablas referenciadas viven en otras bases
--- de datos (cliente_db y producto_db), y PostgreSQL no permite
--- crear claves foráneas entre bases distintas.
+-- (sin FK) porque las tablas referenciadas viven en bases de
+-- datos de OTROS microservicios (cliente_db y producto_db), y
+-- PostgreSQL no permite crear claves foráneas entre bases
+-- distintas. La validación se hace vía HTTP en compra-api.
 -- ------------------------------------------------------------
-\c compra_db
-\set ON_ERROR_STOP on
-
 CREATE TABLE IF NOT EXISTS compras (
     id          BIGSERIAL      PRIMARY KEY,
     cliente_id  BIGINT         NOT NULL,
@@ -47,7 +48,6 @@ CREATE TABLE IF NOT EXISTS compra_detalle (
     cantidad        INTEGER        NOT NULL,
     precio_unitario NUMERIC(10,2)  NOT NULL,
 
-    -- FK real: misma base de datos
     CONSTRAINT fk_detalle_compra
         FOREIGN KEY (compra_id)
         REFERENCES compras (id)
@@ -59,8 +59,3 @@ CREATE TABLE IF NOT EXISTS compra_detalle (
 
 CREATE INDEX IF NOT EXISTS idx_compras_cliente ON compras (cliente_id);
 CREATE INDEX IF NOT EXISTS idx_detalle_compra ON compra_detalle (compra_id);
-
--- Privilegios mínimos
-GRANT SELECT, INSERT, UPDATE, DELETE ON compras TO compra_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON compra_detalle TO compra_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO compra_user;

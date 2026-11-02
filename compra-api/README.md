@@ -32,7 +32,7 @@ Servicio de compras en el taller de microservicios. Registra compras con persist
 - Node.js 18+ (usa `fetch` nativo).
 - pnpm (o npm).
 - `cliente-api` (puerto 3001) y `producto-api` (puerto 3002) **ejecutándose** para validaciones.
-- PostgreSQL en ejecución con la base `compra_db` configurada mediante los scripts de [`database/`](../database/README.md).
+- PostgreSQL independiente para este servicio, con la base `compra_db` y los scripts de [`database/compra/`](../database/compra/).
 
 ## Variables de entorno
 
@@ -43,9 +43,9 @@ Copia `.env.example` a `.env`:
 | `PORT`             | `3003`                                                               | Puerto del servicio                          |
 | `CLIENTE_API_URL`  | `http://localhost:3001`                                              | URL base de cliente-api                      |
 | `PRODUCTO_API_URL` | `http://localhost:3002`                                              | URL base de producto-api                     |
-| `DATABASE_URL`     | `postgresql://compra_user:compra_pass_123@localhost:5432/compra_db`   | Cadena de conexión principal (Sequelize)     |
+| `DATABASE_URL`     | `postgresql://compra_user:compra_pass_123@localhost:5435/compra_db`   | Cadena de conexión principal (Sequelize)     |
 | `DB_HOST`          | `localhost`                                                          | Host alternativo                             |
-| `DB_PORT`          | `5432`                                                               | Puerto alternativo                           |
+| `DB_PORT`          | `5435`                                                               | Puerto alternativo                           |
 | `DB_NAME`          | `compra_db`                                                          | Base de datos alternativa                    |
 | `DB_USER`          | `compra_user`                                                        | Usuario alternativo                          |
 | `DB_PASSWORD`      | `compra_pass_123`                                                    | Contraseña alternativa                       |

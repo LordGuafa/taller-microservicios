@@ -75,7 +75,7 @@ Cualquier otra ruta responde `404`. Un error inesperado responde `500` y se regi
 
 - **Node.js 22.18 o superior**, porque Prisma 8 lo exige.
 - **pnpm 11.20 o superior**, declarado en `devEngines` de `package.json`.
-- **PostgreSQL** con los roles, bases y tablas de [`database/`](../database/README.md). Como mínimo hay que ejecutar `01-roles-y-bases.sql` y `02-tablas-cliente.sql`.
+- **PostgreSQL** independiente para este servicio, con la base `cliente_db` y los scripts de [`database/cliente/`](../database/cliente/). Al usar Docker, el contenedor `postgres-cliente` crea y siembra la base automáticamente.
 
 ## Variables de entorno
 
@@ -84,7 +84,7 @@ Copia `.env.example` a `.env`:
 | Variable | Valor por defecto | Descripción |
 |----------|-------------------|-------------|
 | `PORT` | `3001` | Puerto del servicio |
-| `DATABASE_URL` | `postgresql://cliente_user:cliente_pass_123@localhost:5432/cliente_db` | Conexión a PostgreSQL. La usan el servicio y el CLI de Prisma. Es obligatoria: sin ella el servicio no arranca. |
+| `DATABASE_URL` | `postgresql://cliente_user:cliente_pass_123@localhost:5433/cliente_db` | Conexión a PostgreSQL. La usan el servicio y el CLI de Prisma. Es obligatoria: sin ella el servicio no arranca. |
 
 `dotenv` no expande variables dentro de otras (por ejemplo `${DB_USER}`), así que la URL debe escribirse completa.
 
@@ -164,16 +164,16 @@ model Cliente {
 ```
 
 - `@@map("clientes")` asocia el modelo a la tabla, y `@map(...)` asocia cada campo en camelCase a su columna en snake_case.
-- Los tipos y los índices coinciden exactamente con `database/02-tablas-cliente.sql`. Se obtuvieron con `prisma contract infer`.
+- Los tipos y los índices coinciden exactamente con `database/cliente/01-tablas.sql`. Se obtuvieron con `prisma contract infer`.
 - El código accede a la tabla con `db.orm.public.Cliente` (ver [`src/models/clientes.ts`](src/models/clientes.ts)).
 
 ### La tabla la crean los scripts SQL, no Prisma
 
-La tabla `clientes` le pertenece al usuario `postgres`, y `cliente_user` solo tiene permisos de lectura y escritura (`SELECT`, `INSERT`, `UPDATE`, `DELETE`). Por eso **Prisma no crea ni modifica la estructura de la tabla**. Así se usa:
+La tabla `clientes` la crea `database/cliente/01-tablas.sql` dentro del contenedor `postgres-cliente`. Prisma se conecta como `cliente_user` y **no crea ni modifica la estructura de la tabla**. Así se usa:
 
 - **`prisma db init`** compara el contrato con la base de datos. Si coinciden, no cambia nada y solo "firma" la base, es decir, guarda en el esquema `prisma_contract` qué versión del contrato tiene. Solo hace cambios aditivos, así que se puede ejecutar siempre. El contenedor de Docker lo ejecuta en cada arranque.
 - **Para cambiar la estructura de la tabla:**
-  1. Modifica `database/02-tablas-cliente.sql` y aplica el cambio en la base de datos.
+  1. Modifica `database/cliente/01-tablas.sql` y aplica el cambio en la base de datos.
   2. Actualiza `prisma/contract.prisma` para que coincida.
   3. Ejecuta `pnpm contract:emit` para regenerar `contract.json` y `contract.d.ts`.
   4. Ejecuta `pnpm db:init` para firmar la base de datos con el contrato nuevo.

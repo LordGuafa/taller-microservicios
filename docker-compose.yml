@@ -1,19 +1,25 @@
 services:
-  postgres:
+  # ------------------------------------------------------------
+  # Microservicio cliente + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-cliente:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: cliente_user
+      POSTGRES_PASSWORD: cliente_pass_123
+      POSTGRES_DB: cliente_db
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./database:/docker-entrypoint-initdb.d
+      - pgdata-cliente:/var/lib/postgresql/data
+      - ./database/cliente:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U cliente_user -d cliente_db"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - cliente-net
 
   cliente:
     build: ./cliente
@@ -22,9 +28,9 @@ services:
     environment:
       PORT: 3001
       # Prisma se conecta con una sola URL (ver src/config/database.ts)
-      DATABASE_URL: postgresql://cliente_user:cliente_pass_123@postgres:5432/cliente_db
+      DATABASE_URL: postgresql://cliente_user:cliente_pass_123@postgres-cliente:5432/cliente_db
     depends_on:
-      postgres:
+      postgres-cliente:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
@@ -32,6 +38,30 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
+    networks:
+      - cliente-net
+
+  # ------------------------------------------------------------
+  # Microservicio producto + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-producto:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: producto_user
+      POSTGRES_PASSWORD: producto_pass_123
+      POSTGRES_DB: producto_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata-producto:/var/lib/postgresql/data
+      - ./database/producto:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U producto_user -d producto_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - producto-net
 
   producto:
     build: ./producto
@@ -39,10 +69,34 @@ services:
       - "3002:3002"
     environment:
       PORT: 3002
-      DATABASE_URL: postgresql://producto_user:producto_pass_123@postgres:5432/producto_db
+      DATABASE_URL: postgresql://producto_user:producto_pass_123@postgres-producto:5432/producto_db
     depends_on:
-      postgres:
+      postgres-producto:
         condition: service_healthy
+    networks:
+      - producto-net
+
+  # ------------------------------------------------------------
+  # Microservicio compra + su PostgreSQL independiente
+  # ------------------------------------------------------------
+  postgres-compra:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: compra_user
+      POSTGRES_PASSWORD: compra_pass_123
+      POSTGRES_DB: compra_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata-compra:/var/lib/postgresql/data
+      - ./database/compra:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compra_user -d compra_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - compra-net
 
   compra-api:
     build: ./compra-api
@@ -50,17 +104,12 @@ services:
       - "3003:3003"
     environment:
       PORT: 3003
-      # Sequelize se conecta con DATABASE_URL o con las variables DB_*
-      DATABASE_URL: postgresql://compra_user:compra_pass_123@postgres:5432/compra_db
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: compra_db
-      DB_USER: compra_user
-      DB_PASSWORD: compra_pass_123
+      # Sequelize se conecta con una sola URL
+      DATABASE_URL: postgresql://compra_user:compra_pass_123@postgres-compra:5432/compra_db
       CLIENTE_API_URL: http://cliente:3001
       PRODUCTO_API_URL: http://producto:3002
     depends_on:
-      postgres:
+      postgres-compra:
         condition: service_healthy
       cliente:
         condition: service_healthy
@@ -72,6 +121,20 @@ services:
       timeout: 3s
       retries: 10
       start_period: 15s
+    networks:
+      # compra-api solo comparte red con las APIs que consume por HTTP.
+      - compra-net
+      - cliente-net
+      - producto-net
+
+networks:
+  # Cada microservicio y su base de datos viven en una red aislada,
+  # igual que en un despliegue independiente (por ejemplo, Azure).
+  cliente-net:
+  producto-net:
+  compra-net:
 
 volumes:
-  pgdata:
+  pgdata-cliente:
+  pgdata-producto:
+  pgdata-compra:
