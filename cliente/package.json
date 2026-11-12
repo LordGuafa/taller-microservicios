@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "contract:emit": "prisma contract emit",
+    "db:init": "prisma db init"
   },
   "keywords": [],
   "author": "",
@@ -20,18 +20,21 @@
       "onFail": "download"
     }
   },
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
+    "@prisma/orm-postgres": "8.0.0-rc.14",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "temporal-polyfill": "^1.0.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.1",
     "@types/pg": "^8.23.1",
     "nodemon": "^3.1.14",
-    "tsx": "^4.19.2",
+    "prisma": "8.0.0-rc.20",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
